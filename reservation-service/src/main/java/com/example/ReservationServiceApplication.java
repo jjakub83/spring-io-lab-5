@@ -15,10 +15,10 @@ import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.annotation.Bean;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.repository.query.Param;
 import org.springframework.data.rest.core.annotation.RepositoryRestResource;
@@ -46,12 +46,23 @@ public class ReservationServiceApplication {
 		SpringApplication.run(ReservationServiceApplication.class, args);
 	}
 
-	@Bean
-	CommandLineRunner init(ReservationRepository repository) {
-		return args -> Arrays.asList("Krzysiek,Marcin,Kamil,Emil,Tomek,Krzysiek,Michał,Patryk,Kuba".split(","))
-				.forEach(name -> repository.save(new Reservation(name)));
+}
+
+@Component
+class Initializer implements CommandLineRunner {
+
+	private final ReservationRepository repository;
+
+	@Autowired
+	public Initializer(ReservationRepository repository) {
+		this.repository = repository;
 	}
 
+	@Override
+	public void run(String... strings) throws Exception {
+		Arrays.asList("Krzysiek,Marcin,Kamil,Emil,Tomek,Krzysiek,Michał,Patryk,Kuba".split(","))
+				.forEach(name -> repository.save(new Reservation(name)));
+	}
 }
 
 @Component
