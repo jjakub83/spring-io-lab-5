@@ -20,9 +20,14 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.boot.actuate.health.HealthIndicator;
+import org.springframework.boot.actuate.metrics.CounterService;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.rest.core.annotation.HandleAfterCreate;
+import org.springframework.data.rest.core.annotation.HandleAfterDelete;
+import org.springframework.data.rest.core.annotation.HandleAfterSave;
+import org.springframework.data.rest.core.annotation.RepositoryEventHandler;
 import org.springframework.data.rest.core.annotation.RepositoryRestResource;
 import org.springframework.data.rest.core.annotation.RestResource;
 import org.springframework.hateoas.Link;
@@ -48,6 +53,33 @@ public class ReservationServiceApplication {
 		SpringApplication.run(ReservationServiceApplication.class, args);
 	}
 
+}
+
+@Component
+@RepositoryEventHandler
+class ReservationEventHandler {
+
+	private final CounterService counter;
+
+	@Autowired
+	public ReservationEventHandler(CounterService counter) {
+		this.counter = counter;
+	}
+
+	@HandleAfterCreate
+	public void create(Reservation reservation) {
+		counter.increment("reservations.create");
+	}
+
+	@HandleAfterSave
+	public void save(Reservation reservation) {
+		counter.increment("reservations.save");
+	}
+
+	@HandleAfterDelete
+	public void delete(Reservation reservation) {
+		counter.increment("reservations.delete");
+	}
 }
 
 @Component

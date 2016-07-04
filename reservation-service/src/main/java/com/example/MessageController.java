@@ -3,9 +3,12 @@ package com.example;
 import static org.springframework.web.bind.annotation.RequestMethod.GET;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import lombok.Data;
 
 @RestController
 @RequestMapping("/message")
@@ -23,4 +26,11 @@ public class MessageController {
 	public String message() {
 		return properties.message;
 	}
+}
+
+@ConfigurationProperties(prefix = "sprio")
+@Data
+class SprioProperties {
+
+	String message;
 }
