@@ -60,6 +60,56 @@
 			</plugin>
 		</plugins>
 	</build>
-	
+
+	<profiles>
+		<profile>
+			<id>docker</id>
+			<build>
+				<plugins>
+					<plugin>
+						<artifactId>maven-resources-plugin</artifactId>
+						<executions>
+							<execution>
+								<id>copy-resources</id>
+								<phase>generate-resources</phase>
+								<goals>
+									<goal>copy-resources</goal>
+								</goals>
+								<configuration>
+									<resources>
+										<resource>
+											<directory>docker</directory>
+											<!-- FIXME for some reason filtering does not work - fix it -->
+											<filtering>true</filtering>
+										</resource>
+									</resources>
+									<outputDirectory>${project.build.directory}</outputDirectory>
+								</configuration>
+							</execution>
+						</executions>
+					</plugin>
+
+					<plugin>
+						<groupId>com.spotify</groupId>
+						<artifactId>docker-maven-plugin</artifactId>
+						<version>0.4.10</version>
+						<configuration>
+							<dockerDirectory>${project.build.directory}</dockerDirectory>
+							<imageName>sprio5/${project.artifactId}</imageName>
+						</configuration>
+						<executions>
+							<execution>
+								<id>build-latest-docker-image</id>
+								<phase>install</phase>
+								<goals>
+									<goal>build</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+	</profiles>
 
 </project>
