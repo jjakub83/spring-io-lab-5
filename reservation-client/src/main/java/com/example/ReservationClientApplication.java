@@ -2,6 +2,7 @@ package com.example;
 
 import static org.springframework.web.bind.annotation.RequestMethod.GET;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -9,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cloud.client.circuitbreaker.EnableCircuitBreaker;
 import org.springframework.cloud.client.discovery.DiscoveryClient;
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 import org.springframework.cloud.client.loadbalancer.LoadBalanced;
@@ -23,6 +25,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
 
+import com.netflix.hystrix.contrib.javanica.annotation.HystrixCommand;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -31,6 +34,7 @@ import lombok.extern.slf4j.Slf4j;
 @SpringBootApplication
 @EnableDiscoveryClient
 @EnableFeignClients
+@EnableCircuitBreaker
 public class ReservationClientApplication {
 
 	public static void main(String[] args) {
@@ -41,6 +45,27 @@ public class ReservationClientApplication {
 	public RestTemplate restTemplate() {
 		return new RestTemplate();
 	}
+}
+
+@Component
+class IntegrationClient {
+
+	private final ReservationsClient delegate;
+
+	@Autowired
+	public IntegrationClient(ReservationsClient delegate) {
+		this.delegate = delegate;
+	}
+
+	@HystrixCommand(fallbackMethod = "listReservationsFallback")
+	public List<Reservation> listReservationsSafely() {
+		return delegate.listReservations();
+	}
+
+	public List<Reservation> listReservationsFallback() {
+		return Arrays.asList("This,is,fallback".split(",")).stream().map(Reservation::new).collect(Collectors.toList());
+	}
+
 }
 
 @FeignClient("reservationservice")
@@ -55,12 +80,14 @@ interface ReservationsClient {
 class ReservationNamesController {
 
 	private final RestTemplate rest;
-	private final ReservationsClient client;
+	private final ReservationsClient feignClient;
+	private final IntegrationClient safeClient;
 
 	@Autowired
-	public ReservationNamesController(RestTemplate rest, ReservationsClient client) {
+	public ReservationNamesController(RestTemplate rest, ReservationsClient feignClient, IntegrationClient safeClient) {
 		this.rest = rest;
-		this.client = client;
+		this.feignClient = feignClient;
+		this.safeClient = safeClient;
 	}
 
 	@RequestMapping(path = "/names", method = GET)
@@ -77,7 +104,12 @@ class ReservationNamesController {
 
 	@RequestMapping(path = "/feign-names", method = GET)
 	public List<String> feignNames() {
-		return client.listReservations().stream().map(Reservation::getName).collect(Collectors.toList());
+		return feignClient.listReservations().stream().map(Reservation::getName).collect(Collectors.toList());
+	}
+
+	@RequestMapping(path = "/safe-names", method = GET)
+	public List<String> safeNames() {
+		return safeClient.listReservationsSafely().stream().map(Reservation::getName).collect(Collectors.toList());
 	}
 
 }
