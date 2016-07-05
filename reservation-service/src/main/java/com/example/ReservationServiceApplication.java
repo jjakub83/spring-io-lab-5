@@ -25,6 +25,8 @@ import org.springframework.boot.actuate.health.HealthIndicator;
 import org.springframework.boot.actuate.metrics.CounterService;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
+import org.springframework.cloud.stream.annotation.EnableBinding;
+import org.springframework.cloud.stream.messaging.Sink;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.repository.query.Param;
 import org.springframework.data.rest.core.annotation.HandleAfterCreate;
@@ -38,6 +40,8 @@ import org.springframework.hateoas.Resource;
 import org.springframework.hateoas.ResourceProcessor;
 import org.springframework.hateoas.mvc.ControllerLinkBuilder;
 import org.springframework.http.ResponseEntity;
+import org.springframework.integration.annotation.MessageEndpoint;
+import org.springframework.integration.annotation.ServiceActivator;
 import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -51,12 +55,25 @@ import lombok.extern.slf4j.Slf4j;
 
 @SpringBootApplication
 @EnableDiscoveryClient
+@EnableBinding(Sink.class)
 public class ReservationServiceApplication {
 
 	public static void main(String[] args) {
 		SpringApplication.run(ReservationServiceApplication.class, args);
 	}
 
+}
+
+@MessageEndpoint
+class ReservationServiceActivator {
+
+	@Autowired
+	private ReservationRepository reservationRepository;
+
+	@ServiceActivator(inputChannel = Sink.INPUT)
+	public void createReservation(String reservationName) {
+		reservationRepository.save(new Reservation(reservationName));
+	}
 }
 
 @Component

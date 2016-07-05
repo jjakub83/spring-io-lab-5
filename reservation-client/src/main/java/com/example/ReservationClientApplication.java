@@ -1,6 +1,7 @@
 package com.example;
 
 import static org.springframework.web.bind.annotation.RequestMethod.GET;
+import static org.springframework.web.bind.annotation.RequestMethod.POST;
 
 import java.util.Arrays;
 import java.util.List;
@@ -16,11 +17,18 @@ import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 import org.springframework.cloud.client.loadbalancer.LoadBalanced;
 import org.springframework.cloud.netflix.feign.EnableFeignClients;
 import org.springframework.cloud.netflix.feign.FeignClient;
+import org.springframework.cloud.stream.annotation.EnableBinding;
+import org.springframework.cloud.stream.annotation.Output;
+import org.springframework.cloud.stream.messaging.Source;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.Message;
+import org.springframework.messaging.MessageChannel;
+import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.stereotype.Component;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
@@ -35,6 +43,7 @@ import lombok.extern.slf4j.Slf4j;
 @EnableDiscoveryClient
 @EnableFeignClients
 @EnableCircuitBreaker
+@EnableBinding(Source.class)
 public class ReservationClientApplication {
 
 	public static void main(String[] args) {
@@ -77,18 +86,11 @@ interface ReservationsClient {
 }
 
 @RestController
+@RequestMapping(path = "/reservations")
 class ReservationNamesController {
 
-	private final RestTemplate rest;
-	private final ReservationsClient feignClient;
-	private final IntegrationClient safeClient;
-
 	@Autowired
-	public ReservationNamesController(RestTemplate rest, ReservationsClient feignClient, IntegrationClient safeClient) {
-		this.rest = rest;
-		this.feignClient = feignClient;
-		this.safeClient = safeClient;
-	}
+	private RestTemplate rest;
 
 	@RequestMapping(path = "/names", method = GET)
 	public List<String> names() {
@@ -102,16 +104,31 @@ class ReservationNamesController {
 		return exchange.getBody().stream().map(Reservation::getName).collect(Collectors.toList());
 	}
 
+	@Autowired
+	private ReservationsClient feignClient;
+
 	@RequestMapping(path = "/feign-names", method = GET)
 	public List<String> feignNames() {
 		return feignClient.listReservations().stream().map(Reservation::getName).collect(Collectors.toList());
 	}
+
+	@Autowired
+	private IntegrationClient safeClient;
 
 	@RequestMapping(path = "/safe-names", method = GET)
 	public List<String> safeNames() {
 		return safeClient.listReservationsSafely().stream().map(Reservation::getName).collect(Collectors.toList());
 	}
 
+	@Autowired
+	@Output(Source.OUTPUT)
+	private MessageChannel out;
+
+	@RequestMapping(method = POST)
+	public void createReservation(@RequestBody Reservation reservation) {
+		Message<String> message = MessageBuilder.withPayload(reservation.getName()).build();
+		out.send(message);
+	}
 }
 
 @NoArgsConstructor
