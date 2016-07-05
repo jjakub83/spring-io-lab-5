@@ -6,6 +6,7 @@ import static org.springframework.web.bind.annotation.RequestMethod.GET;
 import static org.springframework.web.bind.annotation.RequestMethod.POST;
 
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -16,6 +17,7 @@ import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.actuate.health.Health;
@@ -138,9 +140,15 @@ class ReservationController {
 			asList("Krzysiek,Marcin,Kamil,Emil,Tomek,Krzysiek,Michał,Patryk,Kuba".split(","))
 			.stream().map(Reservation::new).collect(Collectors.toList());
 
+	@Value("${my.app.id}")
+	String appId;
+
 	@RequestMapping(method = GET)
 	public List<Reservation> listReservations() {
-		return storage;
+		List<Reservation> list = new ArrayList<>();
+		list.add(new Reservation(appId));
+		list.addAll(storage);
+		return list;
 	}
 
 	@RequestMapping(path = "/{name}", method = GET)

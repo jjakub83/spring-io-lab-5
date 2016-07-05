@@ -12,7 +12,7 @@ import com.codahale.metrics.graphite.Graphite;
 import com.codahale.metrics.graphite.GraphiteReporter;
 import lombok.Data;
 
-@Configuration
+//@Configuration
 @EnableConfigurationProperties(GraphiteProperties.class)
 public class GraphiteConfiguration {
 
