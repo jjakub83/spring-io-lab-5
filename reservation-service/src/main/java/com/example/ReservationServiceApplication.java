@@ -162,6 +162,7 @@ class ReservationController {
 
 	@RequestMapping(method = GET)
 	public List<Reservation> listReservations() {
+		log.info("Calling listReservations...");
 		List<Reservation> list = new ArrayList<>();
 		list.add(new Reservation(appId));
 		list.addAll(storage);

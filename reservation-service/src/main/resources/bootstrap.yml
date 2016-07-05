@@ -1,0 +1,28 @@
+
+my:
+  app:
+    id: ${random.value}
+
+info:
+  artifactid: ${project.artifactId}
+  version: ${project.version}
+  instanceId: ${my.app.id}
+
+spring:
+  application:
+    name: reservationservice
+  cloud:
+    config:
+      discovery:
+        enabled: true
+        serviceId: configservice
+
+eureka:
+  instance:
+    preferIpAddress: true
+    instanceId: ${spring.application.name}-${my.app.id}
+    metadataMap:
+      myCustomMetaProp: I can put here whatever
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8765/eureka/

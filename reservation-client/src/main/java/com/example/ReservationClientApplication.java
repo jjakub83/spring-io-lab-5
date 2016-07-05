@@ -22,12 +22,15 @@ import org.springframework.cloud.stream.annotation.Output;
 import org.springframework.cloud.stream.messaging.Source;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.hateoas.Resource;
+import org.springframework.hateoas.Resources;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.stereotype.Component;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -67,12 +70,12 @@ class IntegrationClient {
 	}
 
 	@HystrixCommand(fallbackMethod = "listReservationsFallback")
-	public List<Reservation> listReservationsSafely() {
+	public Resources<Reservation> listReservationsSafely() {
 		return delegate.listReservations();
 	}
 
-	public List<Reservation> listReservationsFallback() {
-		return Arrays.asList("This,is,fallback".split(",")).stream().map(Reservation::new).collect(Collectors.toList());
+	public Resources<Reservation> listReservationsFallback() {
+		return new Resources(Arrays.asList("This,is,fallback".split(",")).stream().map(Reservation::new).collect(Collectors.toList()));
 	}
 
 }
@@ -80,11 +83,15 @@ class IntegrationClient {
 @FeignClient("reservationservice")
 interface ReservationsClient {
 
-	@RequestMapping(path = "/custom/reservations", method = GET)
-	List<Reservation> listReservations();
+	@RequestMapping(path = "/reservations", method = GET)
+	Resources<Reservation> listReservations();
+
+	@RequestMapping(path = "/reservations/{id}", method = GET)
+	Resource<Reservation> getReservation(@PathVariable("id") Long id);
 
 }
 
+@Slf4j
 @RestController
 @RequestMapping(path = "/reservations")
 class ReservationNamesController {
@@ -94,14 +101,15 @@ class ReservationNamesController {
 
 	@RequestMapping(path = "/names", method = GET)
 	public List<String> names() {
+		log.info("Calling names...");
 
-		ParameterizedTypeReference<List<Reservation>> responseType =
-				new ParameterizedTypeReference<List<Reservation>>() {};
+		ParameterizedTypeReference<Resources<Reservation>> responseType =
+				new ParameterizedTypeReference<Resources<Reservation>>() {};
 
-		ResponseEntity<List<Reservation>> exchange =
-				rest.exchange("http://reservationservice/custom/reservations", HttpMethod.GET, null, responseType);
+		ResponseEntity<Resources<Reservation>> exchange =
+				rest.exchange("http://reservationservice/reservations", HttpMethod.GET, null, responseType);
 
-		return exchange.getBody().stream().map(Reservation::getName).collect(Collectors.toList());
+		return exchange.getBody().getContent().stream().map(Reservation::getName).collect(Collectors.toList());
 	}
 
 	@Autowired
@@ -109,7 +117,13 @@ class ReservationNamesController {
 
 	@RequestMapping(path = "/feign-names", method = GET)
 	public List<String> feignNames() {
-		return feignClient.listReservations().stream().map(Reservation::getName).collect(Collectors.toList());
+		log.info("Calling feign-names...");
+		return feignClient.listReservations().getContent().stream().map(Reservation::getName).collect(Collectors.toList());
+	}
+
+	@RequestMapping(path = "/{id}/feign-name", method = GET)
+	public String feignName(@PathVariable("id") Long id) {
+		return feignClient.getReservation(id).getContent().getName();
 	}
 
 	@Autowired
@@ -117,7 +131,8 @@ class ReservationNamesController {
 
 	@RequestMapping(path = "/safe-names", method = GET)
 	public List<String> safeNames() {
-		return safeClient.listReservationsSafely().stream().map(Reservation::getName).collect(Collectors.toList());
+		log.info("Calling safe-names...");
+		return safeClient.listReservationsSafely().getContent().stream().map(Reservation::getName).collect(Collectors.toList());
 	}
 
 	@Autowired
